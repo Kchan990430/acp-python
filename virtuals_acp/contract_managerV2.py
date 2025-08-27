@@ -47,7 +47,7 @@ class ACPContractManagerV2(BaseACPContractManager):
         )
 
     def _get_wallet_id(self) -> str:
-        agent_response = requests.post(
+        agent_response = requests.get(
             self.config.acp_api_url
             + "/agents?filters[walletAddress]="
             + self.agent_wallet_address,
@@ -68,13 +68,13 @@ class ACPContractManagerV2(BaseACPContractManager):
         if data is None:
             raise Exception(f"No agent found for wallet {self.agent_wallet_address}")
 
-        if data.length == 0:
+        if len(data) == 0:
             raise Exception(f"No agent found for wallet {self.agent_wallet_address}")
 
         agent = data[0]
 
         if agent["walletId"] is None:
-            raise Exception(f"No wallet_id found for agent {agent['id']}")
+            raise Exception(f"No wallet_id found for agent {self.agent_wallet_address}")
 
         return agent["walletId"]
 
@@ -131,9 +131,11 @@ class ACPContractManagerV2(BaseACPContractManager):
             private_key = serialization.load_pem_private_key(
                 private_key_pem.encode(), password=None, backend=default_backend()
             )
-            signature = private_key.sign(
-                serialized_payload.encode(), ec.ECDSA(hashes.SHA256())
+
+            signature = private_key.sign(  # type: ignore
+                serialized_payload.encode(), ec.ECDSA(hashes.SHA256())  # type: ignore
             )
+
             signature_b64 = base64.b64encode(signature).decode()
 
             return signature_b64
@@ -180,6 +182,28 @@ class ACPContractManagerV2(BaseACPContractManager):
         )
         auth_signature = self._generate_authorization_signature(tx_data)
         return self._send_transaction(tx_data, auth_signature)
+
+    def get_job_id(self, hash_value: str) -> int:
+        receipt = self.w3.eth.wait_for_transaction_receipt(hash_value)
+
+        logs = receipt.get("logs", [])
+        contract_logs = next(
+            (
+                log
+                for log in logs
+                if log.get("address", "").lower()
+                == self.config.contract_address.lower()
+            ),
+            None,
+        )
+
+        if not contract_logs:
+            raise Exception("Failed to get contract logs")
+
+        try:
+            return int(Web3.to_int(contract_logs.get("data")))
+        except (ValueError, TypeError, AttributeError):
+            raise Exception("Failed to parse job ID from contract logs")
 
     def approve_allowance(self, amount: float) -> str:
         tx_data = self._prepare_transaction(
@@ -271,14 +295,3 @@ class ACPContractManagerV2(BaseACPContractManager):
 
         auth_signature = self._generate_authorization_signature(tx_data)
         return self._send_transaction(tx_data, auth_signature)
-
-    def validate_transaction(self, hash_value: str) -> Dict[str, Any]:
-        try:
-            receipt = self.w3.eth.wait_for_transaction_receipt(hash_value)
-            return {
-                "status": 200 if receipt.status == 1 else 500,
-                "hash": hash_value,
-                "receipt": receipt,
-            }
-        except Exception as e:
-            raise Exception(f"Failed to validate transaction {hash_value}: {e}")

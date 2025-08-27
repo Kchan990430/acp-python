@@ -301,69 +301,12 @@ class VirtualsACP:
         if provider_address == self.agent_address:
             raise Exception("You cannot initiate a job with yourself as the provider")
 
-        job_id = None
-        retry_count = 3
-        retry_delay = 3
-
         user_op_hash = self.contract_manager.create_job(
             provider_address, eval_addr, expired_at
         )
-
-        time.sleep(retry_delay)
-        for attempt in range(retry_count):
-            try:
-                response = self.contract_manager.validate_transaction(user_op_hash)
-
-                if response.get("status") == 200:
-                    logs = response.get("receipts", [])[0].get("logs", [])
-                    contract_logs = next(
-                        (
-                            log
-                            for log in logs
-                            if log.get("address", "").lower()
-                            == self.contract_manager.config.contract_address.lower()
-                        ),
-                        None,
-                    )
-
-                    if not contract_logs:
-                        raise Exception("Failed to get contract logs")
-
-                    try:
-                        job_id = int(Web3.to_int(hexstr=contract_logs.get("data")))
-                        break
-                    except (ValueError, TypeError, AttributeError):
-                        raise Exception("Failed to parse job ID from contract logs")
-
-                # data = response.get("data", {})
-                # if not data:
-                #     raise Exception("Invalid tx_hash!")
-
-                # if data.get("status") == "retry":
-                #     raise Exception("Transaction failed, retrying...")
-
-                # if data.get("status") == "failed":
-                #     break
-
-                # if data.get("status") == "success":
-                #     job_id = int(data.get("result").get("jobId"))
-
-                # if job_id is not None and job_id != "":
-                #     break
-
-            except Exception as e:
-                if attempt == retry_count - 1:
-                    print(f"Error in create_job function: {e}")
-                if attempt < retry_count - 1:
-                    time.sleep(retry_delay)
-                else:
-                    raise
-
-        if job_id is None or job_id == "":
-            raise Exception("Failed to create job")
+        job_id = self.contract_manager.get_job_id(user_op_hash)
 
         self.contract_manager.set_budget_with_payment_token(job_id, amount)
-        time.sleep(10)
 
         self.contract_manager.create_memo(
             job_id,
@@ -414,8 +357,6 @@ class VirtualsACP:
             if not accept:
                 return tx_hash
 
-            time.sleep(10)
-
             print(
                 f"Responding to job {job_id} with memo {memo_id} and accept {accept} and reason {reason}"
             )
@@ -443,10 +384,8 @@ class VirtualsACP:
     ) -> Dict[str, Any]:
 
         self.contract_manager.approve_allowance(amount)
-        time.sleep(10)
 
         self.contract_manager.sign_memo(memo_id, True, reason or "")
-        time.sleep(10)
 
         reason = f"{reason if reason else f'Job {job_id} paid.'}"
         print(

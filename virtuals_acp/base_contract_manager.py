@@ -21,6 +21,10 @@ class BaseACPContractManager(ABC):
         pass
 
     @abstractmethod
+    def get_job_id(self, hash_value: str) -> int:
+        pass
+
+    @abstractmethod
     def approve_allowance(self, amount: float) -> Dict[str, Any]:
         pass
 
@@ -65,10 +69,6 @@ class BaseACPContractManager(ABC):
     def set_budget_with_payment_token(
         self, job_id: int, budget: float, payment_token_address: Optional[str] = None
     ) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def validate_transaction(self, hash_value: str) -> Dict[str, Any]:
         pass
 
     def _format_amount(self, amount: float) -> int:

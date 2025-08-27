@@ -100,6 +100,42 @@ class ACPContractManager(BaseACPContractManager):
                 time.sleep(2 * (3 - retries))
         raise Exception("Failed to create job")
 
+    def get_job_id(self, hash_value: str) -> int:
+        retries = 3
+        while retries > 0:
+            try:
+                result = self.validate_transaction(hash_value)
+
+                if result.get("status") == 200:
+                    logs = result.get("receipts", [])[0].get("logs", [])
+                    contract_logs = next(
+                        (
+                            log
+                            for log in logs
+                            if log.get("address", "").lower()
+                            == self.config.contract_address.lower()
+                        ),
+                        None,
+                    )
+
+                    if not contract_logs:
+                        raise Exception("Failed to get contract logs")
+
+                    try:
+                        return int(Web3.to_int(hexstr=contract_logs.get("data")))
+                    except (ValueError, TypeError, AttributeError):
+                        raise Exception("Failed to parse job ID from contract logs")
+                else:
+                    raise Exception(f"Failed to get job id")
+            except Exception as e:
+                retries -= 1
+                if retries == 0:
+                    print(f"Error during get_job_id: {e}")
+                    raise
+                time.sleep(2 * (3 - retries))
+
+        raise Exception("Failed to get job id")
+
     def approve_allowance(self, amount: float) -> Dict[str, Any]:
         user_op_hash = self._sign_transaction(
             "approve",
