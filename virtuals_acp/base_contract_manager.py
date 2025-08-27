@@ -1,38 +1,29 @@
-
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, Any, Optional, Union
 from web3 import Web3
 from virtuals_acp.models import ACPJobPhase, MemoType, FeeType
+from virtuals_acp.configs import ACPContractConfig, DEFAULT_CONFIG
 
 
 class BaseACPContractManager(ABC):
-    
     def __init__(
-        self,
-        web3_client: Web3,
-        agent_wallet_address: str,
-        entity_id: int,
-        config: Any
+        self, agent_wallet_address: str, config: ACPContractConfig = DEFAULT_CONFIG
     ):
-        self.w3 = web3_client
         self.agent_wallet_address = agent_wallet_address
-        self.entity_id = entity_id
         self.config = config
-    
+        self.w3 = Web3(Web3.HTTPProvider(config.rpc_url))
+
     @abstractmethod
     def create_job(
-        self,
-        provider_address: str,
-        evaluator_address: str,
-        expired_at: datetime
-    ) -> Union[str, Dict[str, Any]]:
+        self, provider_address: str, evaluator_address: str, expired_at: datetime
+    ) -> str:
         pass
-    
+
     @abstractmethod
     def approve_allowance(self, amount: float) -> Dict[str, Any]:
         pass
-    
+
     @abstractmethod
     def create_memo(
         self,
@@ -40,10 +31,10 @@ class BaseACPContractManager(ABC):
         content: str,
         memo_type: MemoType,
         is_secured: bool,
-        next_phase: ACPJobPhase
+        next_phase: ACPJobPhase,
     ) -> Dict[str, Any]:
         pass
-    
+
     @abstractmethod
     def create_payable_memo(
         self,
@@ -56,37 +47,32 @@ class BaseACPContractManager(ABC):
         next_phase: ACPJobPhase,
         memo_type: MemoType,
         expired_at: datetime,
-        token: Optional[str] = None
+        token: Optional[str] = None,
     ) -> Dict[str, Any]:
         pass
-    
+
     @abstractmethod
     def sign_memo(
-        self,
-        memo_id: int,
-        is_approved: bool,
-        reason: Optional[str] = ""
+        self, memo_id: int, is_approved: bool, reason: Optional[str] = ""
     ) -> Dict[str, Any]:
         pass
-    
+
     @abstractmethod
     def set_budget(self, job_id: int, budget: float) -> Dict[str, Any]:
         pass
-    
+
     @abstractmethod
     def set_budget_with_payment_token(
-        self,
-        job_id: int,
-        budget: float,
-        payment_token_address: str = None
+        self, job_id: int, budget: float, payment_token_address: Optional[str] = None
     ) -> Dict[str, Any]:
         pass
-    
+
     @abstractmethod
     def validate_transaction(self, hash_value: str) -> Dict[str, Any]:
         pass
-    
+
     def _format_amount(self, amount: float) -> int:
         from decimal import Decimal
+
         amount_decimal = Decimal(str(amount))
-        return int(amount_decimal * (10 ** self.config.payment_token_decimals))
+        return int(amount_decimal * (10**self.config.payment_token_decimals))
