@@ -25,7 +25,7 @@ class BaseACPContractManager(ABC):
         pass
 
     @abstractmethod
-    def approve_allowance(self, amount: float) -> Dict[str, Any]:
+    def approve_allowance(self, amount: float) -> str:
         pass
 
     @abstractmethod
@@ -36,7 +36,7 @@ class BaseACPContractManager(ABC):
         memo_type: MemoType,
         is_secured: bool,
         next_phase: ACPJobPhase,
-    ) -> Dict[str, Any]:
+    ) -> str:
         pass
 
     @abstractmethod
@@ -52,23 +52,23 @@ class BaseACPContractManager(ABC):
         memo_type: MemoType,
         expired_at: datetime,
         token: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> str:
         pass
 
     @abstractmethod
     def sign_memo(
         self, memo_id: int, is_approved: bool, reason: Optional[str] = ""
-    ) -> Dict[str, Any]:
+    ) -> str:
         pass
 
     @abstractmethod
-    def set_budget(self, job_id: int, budget: float) -> Dict[str, Any]:
+    def set_budget(self, job_id: int, budget: float) -> str:
         pass
 
     @abstractmethod
     def set_budget_with_payment_token(
         self, job_id: int, budget: float, payment_token_address: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> str:
         pass
 
     def _format_amount(self, amount: float) -> int:
