@@ -1,6 +1,7 @@
 import base64
 import json
 import math
+from hexbytes import HexBytes
 import requests
 from datetime import datetime
 from decimal import Decimal
@@ -184,7 +185,8 @@ class ACPContractManagerV2(BaseACPContractManager):
         return self._send_transaction(tx_data, auth_signature)
 
     def get_job_id(self, hash_value: str) -> int:
-        receipt = self.w3.eth.wait_for_transaction_receipt(hash_value)
+        hash32 = HexBytes(hash_value)
+        receipt = self.w3.eth.wait_for_transaction_receipt(hash32)
 
         logs = receipt.get("logs", [])
         contract_logs = next(
